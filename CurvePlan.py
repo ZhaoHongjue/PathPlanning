@@ -26,7 +26,7 @@ def TrapezoidPlan(init: float or np.ndarray, final: float or np.ndarray,
             Delta = 0.5 * acc * t**2
         elif t_acc < t <= t_f - t_acc:
             Delta = 0.5 * acc * t_acc**2 + v_max * (t - t_acc)
-        elif t_f - t_acc < t < t_f:
+        elif t_f - t_acc < t <= t_f:
             Delta = final - init - 0.5 * acc * (t_f - t)**2
         else:
             raise Error
@@ -104,17 +104,16 @@ def Polynomial5Plan(init: float or np.ndarray, final: float or np.ndarray,
 
 def PathGenerate(init: np.ndarray, final: np.ndarray, acc: np.ndarray,
                  t_f: float, t: float) -> np.ndarray:
-    # 类型检查，初末位置和加速度的形状应该一样
+    # 检查：初末位置和加速度的形状应该一样
     assert init.shape == final.shape == acc.shape
     # 改变加速度的方向
     acc_x = (final[0] - init[0]) / abs(final[0] - init[0]) * abs(acc[0])
     Delta_x = acc_x**2 * t_f**2 - 4 * acc_x * (final[0] - init[0])
     
     # 求解加速减速的时间
-    if acc[0] > 0:
-        tx_acc = 0.5 * (t_f - np.sqrt(Delta_x) / acc_x)
-    else:
-        tx_acc = 0.5 * (t_f  + np.sqrt(Delta_x) / acc_x)
+    tx_acc1 = 0.5 * (t_f - np.sqrt(Delta_x) / acc_x)
+    tx_acc2 = 0.5 * (t_f  + np.sqrt(Delta_x) / acc_x)
+    tx_acc = min(tx_acc1, tx_acc2)
     vx_max = acc_x * tx_acc
     
     # 进染色槽和出染色槽的位置：(0.1, 0.35, 0.15), (-0.1, 0.35, 0.15)
@@ -123,9 +122,12 @@ def PathGenerate(init: np.ndarray, final: np.ndarray, acc: np.ndarray,
     # 进染色槽和出染色槽的时间
     mid_t = (mid_x - init[0] - 0.5*acc_x*tx_acc**2) / vx_max + tx_acc
     
-    print('mid_delta', mid_x - init[0])
-    print('acc_delta', 0.5*acc_x*tx_acc**2)
-    print('mid_t', mid_t)
+    # print(f'tx_acc1: {tx_acc1},\ntx_acc2: {tx_acc2},\ntx_acc: {tx_acc}')
+    # print('vx_max           ', vx_max)
+    # print('mid_delta        ', mid_x - init[0])
+    # print('acc_delta        ', 0.5*acc_x*tx_acc**2)
+    # print('mid_t-tx_acc     ', mid_t - tx_acc)
+    # print('mid_t            ', mid_t)
     
     pos = np.zeros(3)
     pos[0] = TrapezoidPlan(init[0], final[0], acc_x, t_f, t)
@@ -146,27 +148,23 @@ if __name__ == '__main__':
     init = np.array([0.4, -0.12, 0.40])
     final = np.array([-0.35, 0.0, 0.40])
     acc = np.array([0.1, 0.1, 0.1])
+    t_f = 12
     
-    v_i, a_i = np.zeros(3), np.zeros(3)
-    v_f, a_f = 0.1 * np.ones(3), 1 * np.ones(3)
-    t_f = 20
+    # print(PathGenerate(init, final, acc, t_f, 20))
     
-    t_f = 9
-    print(PathGenerate(init, final, acc, t_f, 4.40707142))
-    
-    # ts = np.linspace(0, t_f, 200)
-    # pos = np.zeros((200, 3))
-    # for i in range(200):
-    #     pos[i] = PathGenerate(init, final, acc, t_f, ts[i])
+    ts = np.linspace(0, t_f, 200)
+    pos = np.zeros((200, 3))
+    for i in range(200):
+        pos[i] = PathGenerate(init, final, acc, t_f, ts[i])
     #     # pos[i] = Poly3Plan(init, final, v_i, v_f, t_f, ts[i])
     
-    # plt.plot(ts, pos[:, 0], label = 'x')
-    # # plt.plot(ts, pos[:, 1], label = 'y')
-    # # plt.plot(ts, pos[:, 2], label = 'z')
+    plt.plot(ts, pos[:, 0], label = 'x')
+    plt.plot(ts, pos[:, 1], label = 'y')
+    plt.plot(ts, pos[:, 2], label = 'z')
     # plt.plot(ts, 0.1 * np.ones_like(ts), label = '0.1')
     # plt.plot(ts, -0.1 * np.ones_like(ts), label = '-0.1')
-    # plt.legend()
-    # plt.show()
+    plt.legend()
+    plt.show()
             
         
     
