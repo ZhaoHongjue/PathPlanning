@@ -6,6 +6,7 @@ def TrapezoidPlan(init: float or np.ndarray, final: float or np.ndarray,
                   acc: float or np.ndarray, t_f: float, t: float) -> float or np.ndarray:
     acc = (final - init) / abs(final - init) * abs(acc)
     tmp = acc**2 * t_f**2 - 4*acc*(final - init)
+    
     if type(tmp)!=np.ndarray:
         assert tmp >= 0
     else:
@@ -20,25 +21,29 @@ def TrapezoidPlan(init: float or np.ndarray, final: float or np.ndarray,
             t_acc = 0.5 * (t_f + np.sqrt(tmp) / acc)
         v_max = acc * t_acc
         
-        if t < t_acc:
+        # 根据不同时间段返回值
+        if 0 <= t <= t_acc:
             Delta = 0.5 * acc * t**2
-        elif t_acc < t < t_f - t_acc:
+        elif t_acc < t <= t_f - t_acc:
             Delta = 0.5 * acc * t_acc**2 + v_max * (t - t_acc)
-        else:
+        elif t_f - t_acc < t < t_f:
             Delta = final - init - 0.5 * acc * (t_f - t)**2
+        else:
+            raise Error
         return init + Delta
     
     else:
-        Delta = np.zeros_like(init)
+        pos = np.zeros_like(init)
         for i in range(len(init)):
-            Delta[i] = TrapezoidPlan(init[i], final[i], acc[i], t_f, t)
-        return Delta
+            pos[i] = TrapezoidPlan(init[i], final[i], acc[i], t_f, t)
+        return pos
     
 
 def Polynomial3Plan(init: float or np.ndarray, final: float or np.ndarray, 
              v_i: float or np.ndarray, v_f: float or np.ndarray,
              t_f: float, t: float) -> float or np.ndarray: 
     assert type(init) == type(final) == type(v_i) == type(v_f)
+    # 时间构成的矩阵，分别对应初位置、末位置、初速度、末速度
     tfMat = np.array([
         [0,             0,              0,              1],
         [t_f**3,        t_f**2,         t_f,            1],
@@ -69,6 +74,7 @@ def Polynomial5Plan(init: float or np.ndarray, final: float or np.ndarray,
              a_i: float or np.ndarray, a_f: float or np.ndarray,
              t_f: float, t: float) -> float or np.ndarray: 
     assert type(init) == type(final) == type(v_i) == type(v_f) == type(a_i) == type(a_f)
+    # 时间构成的矩阵，分别对应初位置、末位置、初速度、末速度、初加速度、末加速度
     tfMat = np.array([
         [0,             0,              0,              0,              0,          1],
         [t_f**5,        t_f**4,         t_f**3,         t_f**2,         t_f,        1],
@@ -98,35 +104,42 @@ def Polynomial5Plan(init: float or np.ndarray, final: float or np.ndarray,
 
 def PathGenerate(init: np.ndarray, final: np.ndarray, acc: np.ndarray,
                  t_f: float, t: float) -> np.ndarray:
+    # 类型检查，初末位置和加速度的形状应该一样
     assert init.shape == final.shape == acc.shape
+    # 改变加速度的方向
     acc_x = (final[0] - init[0]) / abs(final[0] - init[0]) * abs(acc[0])
     Delta_x = acc_x**2 * t_f**2 - 4 * acc_x * (final[0] - init[0])
     
+    # 求解加速减速的时间
     if acc[0] > 0:
         tx_acc = 0.5 * (t_f - np.sqrt(Delta_x) / acc_x)
     else:
         tx_acc = 0.5 * (t_f  + np.sqrt(Delta_x) / acc_x)
     vx_max = acc_x * tx_acc
     
+    # 进染色槽和出染色槽的位置：(0.1, 0.35, 0.15), (-0.1, 0.35, 0.15)
     mid_x = np.array([0.1, -0.1])
     mid_y, mid_z = 0.35, 0.15
+    # 进染色槽和出染色槽的时间
     mid_t = (mid_x - init[0] - 0.5*acc_x*tx_acc**2) / vx_max + tx_acc
+    
     print('mid_delta', mid_x - init[0])
     print('acc_delta', 0.5*acc_x*tx_acc**2)
     print('mid_t', mid_t)
     
-    x = TrapezoidPlan(init[0], final[0], acc_x, t_f, t)
+    pos = np.zeros(3)
+    pos[0] = TrapezoidPlan(init[0], final[0], acc_x, t_f, t)
     if 0 <= t <= mid_t[0]:
-        y = TrapezoidPlan(init[1], mid_y, acc[1], mid_t[0], t)
-        z = TrapezoidPlan(init[2], mid_z, acc[2], mid_t[0], t)
+        pos[1] = TrapezoidPlan(init[1], mid_y, acc[1], mid_t[0], t)
+        pos[2] = TrapezoidPlan(init[2], mid_z, acc[2], mid_t[0], t)
     elif mid_t[0] < t <= mid_t[1]:
-        y, z = mid_y, mid_z
+        pos[1:] = [mid_y, mid_z]
     elif mid_t[1] < t <= t_f:
-        y = TrapezoidPlan(mid_y, final[1], acc[1], t_f - mid_t[1], t - mid_t[1])
-        z = TrapezoidPlan(mid_z, final[2], acc[2], t_f - mid_t[1], t - mid_t[1])
+        pos[1] = TrapezoidPlan(mid_y, final[1], acc[1], t_f - mid_t[1], t - mid_t[1])
+        pos[2] = TrapezoidPlan(mid_z, final[2], acc[2], t_f - mid_t[1], t - mid_t[1])
     else:
         raise Error
-    return np.array([x, y, z])
+    return pos
     
 
 if __name__ == '__main__':
