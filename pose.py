@@ -132,7 +132,7 @@ def Quat2EulerXYZ(q: Quaternion) -> list:
 def EulerXYZ2Quat(Euler_XYZ: list or tuple or np.ndarray) -> Quaternion:
     return RotMat2Quat(EulerXYZ2Quat(Euler_XYZ))
 
-def Slerp(q0, q1, t):
+def Slerp(q0, q1, t) -> Quaternion:
     assert 0 < t < 1
     theta = acos(np.dot(q0, q1))
     alpha = sin((1-t) * theta) / sin(theta)
