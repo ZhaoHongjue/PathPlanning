@@ -70,7 +70,7 @@ class Quaternion:
                 s += '+' + f'{self.num[i+1]:.3f}' + tmp[i]
         return s
     
-def QuatMul(q: Quaternion, p: Quaternion):
+def QuatMul(q: Quaternion, p: Quaternion) -> Quaternion:
     '''
     四元数乘法
     '''
@@ -79,21 +79,21 @@ def QuatMul(q: Quaternion, p: Quaternion):
     c[1:] = q[0] * p[1:] + p[0] * q[1:] + np.cross(q[1:], p[1:])
     return Quaternion(c)
 
-def Quat2RotMat(q: Quaternion):
+def Quat2RotMat(q: Quaternion) -> np.ndarray:
     return np.array([
         [2*(q[0]**2 + q[1]**2) - 1,     2*(q[1]*q[2] - q[0]*q[3]),      2*(q[1]*q[3] + q[0]*q[2])],
         [2*(q[1]*q[2] + q[0]*q[3]),     2*(q[0]**2 + q[2]**2) - 1,      2*(q[2]*q[3] - q[0]*q[1])],
         [2*(q[1]*q[3] - q[0]*q[2]),     2*(q[2]*q[3] + q[0]*q[1]),      2*(q[0]**2 + q[3]**2) - 1],
     ])
 
-def RotMat2EulerXYZ(R: np.ndarray):
+def RotMat2EulerXYZ(R: np.ndarray) -> list:
     assert R.shape == (3, 3)
     Euler_beta = atan2(R[0, 2], sqrt(R[0, 0]**2 + R[0, 1]**2))
     Euler_alpha = atan2(-R[1, 2]/cos(Euler_beta), R[2, 2]/cos(Euler_beta))
     Euler_gamma = atan2(-R[0, 1]/cos(Euler_beta), R[0, 0]/cos(Euler_beta))
     return [Euler_alpha, Euler_beta, Euler_gamma]
 
-def EulerXYZ2RotMat(Euler_XYZ: list):
+def EulerXYZ2RotMat(Euler_XYZ: list or tuple or np.ndarray) -> np.ndarray:
     assert len(Euler_XYZ) == 3
     alpha, beta, gamma = Euler_XYZ
     
@@ -117,7 +117,7 @@ def EulerXYZ2RotMat(Euler_XYZ: list):
         [R20,    R21,    R22],
     ])
 
-def RotMat2Quat(R: np.array):
+def RotMat2Quat(R: np.array) -> Quaternion:
     assert R.shape == (3, 3)
     q = Quaternion([0.0] * 4)
     q[0] = 0.5 * sqrt(np.einsum('ii -> i', R).sum() + 1)
@@ -125,6 +125,12 @@ def RotMat2Quat(R: np.array):
     q[2] = (R[0, 2] - R[2, 0]) / 4 / q[0]
     q[3] = (R[1, 0] - R[0, 1]) / 4 / q[0]
     return q
+
+def Quat2EulerXYZ(q: Quaternion) -> list:
+    return RotMat2EulerXYZ(Quat2RotMat(q))
+
+def EulerXYZ2Quat(Euler_XYZ: list or tuple or np.ndarray) -> Quaternion:
+    return RotMat2Quat(EulerXYZ2Quat(Euler_XYZ))
 
 def Slerp(q0, q1, t):
     assert 0 < t < 1
