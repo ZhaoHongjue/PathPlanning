@@ -26,12 +26,14 @@ def TrapezoidPlan(init: float or np.ndarray, final: float or np.ndarray,
             Delta = 0.5 * acc * t_acc**2 + v_max * (t - t_acc)
         else:
             Delta = final - init - 0.5 * acc * (t_f - t)**2
+        return init + Delta
+    
     else:
         Delta = np.zeros_like(init)
         for i in range(len(init)):
             Delta[i] = TrapezoidPlan(init[i], final[i], acc[i], t_f, t)
-            
-    return init + Delta
+        return Delta
+    
 
 def Polynomial3Plan(init: float or np.ndarray, final: float or np.ndarray, 
              v_i: float or np.ndarray, v_f: float or np.ndarray,
