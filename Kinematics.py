@@ -1,6 +1,6 @@
 from math import cos, acos, sin, atan2, sqrt, pi
 import numpy as np
-from pose import EulerXYZ2RotMat
+from pose import EulerXYZ2RotMat, Quat2RotMat
 
 
 def DHs(theta):
@@ -28,9 +28,14 @@ def IKSolver(pose, check = True):
     c, s = cos, sin
     theta = []
     x, y, z = pose[0:3]
-    Euler_XYZ = pose[3:]
+    rot = pose[3:]
     # 求取旋转矩阵
-    R = EulerXYZ2RotMat(Euler_XYZ)
+    if len(rot) == 3:
+        R = EulerXYZ2RotMat(rot)
+    elif len(rot) == 4:
+        R = Quat2RotMat(rot)
+    else:
+        raise
     
     # 求theta1(有两解)
     px = x - 0.0855 * R[0, 2]
