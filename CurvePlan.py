@@ -1,10 +1,13 @@
-from msilib.schema import Error
+# from msilib.schema import Error
 import numpy as np
 import matplotlib.pyplot as plt
 
 def TrapezoidPlan(init: float or np.ndarray, final: float or np.ndarray, 
                   acc: float or np.ndarray, t_f: float, t: float) -> float or np.ndarray:
-    acc = (final - init) / abs(final - init) * abs(acc)
+    if type(acc) is np.ndarray:
+        for i in range(len(acc)):
+            acc[i] = acc[i] if final[i] - init[i] >= 0 else -acc[i]
+    
     tmp = acc**2 * t_f**2 - 4*acc*(final - init)
     
     if type(tmp)!=np.ndarray:
@@ -29,7 +32,7 @@ def TrapezoidPlan(init: float or np.ndarray, final: float or np.ndarray,
         elif t_f - t_acc < t <= t_f:
             Delta = final - init - 0.5 * acc * (t_f - t)**2
         else:
-            raise Error
+            raise #Error
         return init + Delta
     
     else:
@@ -140,7 +143,7 @@ def PathGenerate(init: np.ndarray, final: np.ndarray, acc: np.ndarray,
         pos[1] = TrapezoidPlan(mid_y, final[1], acc[1], t_f - mid_t[1], t - mid_t[1])
         pos[2] = TrapezoidPlan(mid_z, final[2], acc[2], t_f - mid_t[1], t - mid_t[1])
     else:
-        raise Error
+        raise # Error
     return pos
     
 
