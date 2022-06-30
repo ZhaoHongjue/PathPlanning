@@ -79,12 +79,25 @@ def QuatMul(q: Quaternion, p: Quaternion) -> Quaternion:
     c[1:] = q[0] * p[1:] + p[0] * q[1:] + np.cross(q[1:], p[1:])
     return Quaternion(c)
 
+'''----------------四元数与旋转矩阵----------------'''
+
 def Quat2RotMat(q: Quaternion) -> np.ndarray:
     return np.array([
         [2*(q[0]**2 + q[1]**2) - 1,     2*(q[1]*q[2] - q[0]*q[3]),      2*(q[1]*q[3] + q[0]*q[2])],
         [2*(q[1]*q[2] + q[0]*q[3]),     2*(q[0]**2 + q[2]**2) - 1,      2*(q[2]*q[3] - q[0]*q[1])],
         [2*(q[1]*q[3] - q[0]*q[2]),     2*(q[2]*q[3] + q[0]*q[1]),      2*(q[0]**2 + q[3]**2) - 1],
     ])
+
+def RotMat2Quat(R: np.array) -> Quaternion:
+    assert R.shape == (3, 3)
+    q = Quaternion([0.0] * 4)
+    q[0] = 0.5 * sqrt(np.einsum('ii -> i', R).sum() + 1)
+    q[1] = (R[2, 1] - R[1, 2]) / 4 / q[0]
+    q[2] = (R[0, 2] - R[2, 0]) / 4 / q[0]
+    q[3] = (R[1, 0] - R[0, 1]) / 4 / q[0]
+    return q
+
+'''----------------XYZ欧拉角与旋转矩阵----------------'''
 
 def RotMat2EulerXYZ(R: np.ndarray) -> list:
     assert R.shape == (3, 3)
@@ -117,20 +130,57 @@ def EulerXYZ2RotMat(Euler_XYZ: list or tuple or np.ndarray) -> np.ndarray:
         [R20,    R21,    R22],
     ])
 
-def RotMat2Quat(R: np.array) -> Quaternion:
+'''----------------XYZ固定角与旋转矩阵----------------'''
+
+def FixedXYZ2RotMat(Fixed_XYZ: list or tuple or np.ndarray) -> np.ndarray:
+    assert len(Fixed_XYZ) == 3
+    a, b, r = Fixed_XYZ
+    R = np.zeros((3, 3))
+    R[0, 0] = cos(a) * cos(b)
+    R[1, 0] = sin(a) * cos(b)
+    R[2, 0] = -sin(b)
+    
+    R[0, 1] = cos(a) * sin(b) * sin(r) - sin(a) * cos(r)
+    R[1, 1] = sin(a) * sin(b) * sin(r) + cos(a) * cos(r)
+    R[2, 1] = cos(b) * sin(r)
+    
+    R[0, 2] = cos(a) * sin(b) * cos(r) + sin(a) * sin(r)
+    R[1, 2] = sin(a) * sin(b) * cos(r) - cos(a) * sin(r)
+    R[2, 2] = cos(b) * cos(r)
+    return R
+
+def RotMat2FixedXYZ(R: np.ndarray) -> list:
     assert R.shape == (3, 3)
-    q = Quaternion([0.0] * 4)
-    q[0] = 0.5 * sqrt(np.einsum('ii -> i', R).sum() + 1)
-    q[1] = (R[2, 1] - R[1, 2]) / 4 / q[0]
-    q[2] = (R[0, 2] - R[2, 0]) / 4 / q[0]
-    q[3] = (R[1, 0] - R[0, 1]) / 4 / q[0]
-    return q
+    
+    b = atan2(-R[2, 0], sqrt(R[0, 0]**2 + R[1, 0]**2))
+    a = atan2(R[1, 0] / cos(b), R[0, 0] / cos(b))
+    r = atan2(R[2, 1] / cos(b), R[2, 2] / cos(b))
+    
+    return [a, b, r]
+
+'''----------------四元数与XYZ欧拉角----------------'''
 
 def Quat2EulerXYZ(q: Quaternion) -> list:
     return RotMat2EulerXYZ(Quat2RotMat(q))
 
 def EulerXYZ2Quat(Euler_XYZ: list or tuple or np.ndarray) -> Quaternion:
     return RotMat2Quat(EulerXYZ2Quat(Euler_XYZ))
+
+'''----------------四元数与XYZ固定角----------------'''
+
+def Quat2FixedXYZ(q: Quaternion) -> list:
+    return RotMat2FixedXYZ(Quat2RotMat(q))
+
+def FixedXYZ2Quat(Fixed_XYZ: list or tuple or np.ndarray) -> Quaternion:
+    return RotMat2Quat(FixedXYZ2Quat(Fixed_XYZ))
+
+'''----------------XYZ欧拉角与XYZ固定角----------------'''
+
+def EulerXYZ2FixedXYZ(Euler_XYZ: list or tuple or np.ndarray) -> np.ndarray:
+    return RotMat2FixedXYZ(EulerXYZ2RotMat(Euler_XYZ))
+
+def FixedXYZ2EulerXYZ(Fixed_XYZ: list or tuple or np.ndarray) -> np.ndarray:
+    return RotMat2EulerXYZ(FixedXYZ2RotMat(Fixed_XYZ))
 
 def Slerp(q0, q1, t) -> Quaternion:
     assert 0 < t < 1
@@ -153,3 +203,6 @@ if __name__ == '__main__':
     a /= a.norm
     b /= b.norm
     print(RotMat2Quat(np.eye(3)))
+    
+    FixedXYZ = [0, 0, 0]
+    print(RotMat2FixedXYZ(FixedXYZ2RotMat(FixedXYZ)))
