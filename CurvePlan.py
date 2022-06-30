@@ -1,9 +1,9 @@
-from msilib.schema import Error
 import numpy as np
 import matplotlib.pyplot as plt
 
 def TrapezoidPlan(init: float or np.ndarray, final: float or np.ndarray, 
                   acc: float or np.ndarray, t_f: float, t: float) -> float or np.ndarray:
+    # 根据init和final大小决定acc正负
     acc = (final - init) / abs(final - init) * abs(acc)
     tmp = acc**2 * t_f**2 - 4*acc*(final - init)
     
@@ -29,7 +29,7 @@ def TrapezoidPlan(init: float or np.ndarray, final: float or np.ndarray,
         elif t_f - t_acc < t <= t_f:
             Delta = final - init - 0.5 * acc * (t_f - t)**2
         else:
-            raise Error
+            raise ValueError
         return init + Delta
     
     else:
@@ -38,7 +38,6 @@ def TrapezoidPlan(init: float or np.ndarray, final: float or np.ndarray,
             pos[i] = TrapezoidPlan(init[i], final[i], acc[i], t_f, t)
         return pos
     
-
 def Polynomial3Plan(init: float or np.ndarray, final: float or np.ndarray, 
              v_i: float or np.ndarray, v_f: float or np.ndarray,
              t_f: float, t: float) -> float or np.ndarray: 
@@ -140,32 +139,53 @@ def PathGenerate(init: np.ndarray, final: np.ndarray, acc: np.ndarray,
         pos[1] = TrapezoidPlan(mid_y, final[1], acc[1], t_f - mid_t[1], t - mid_t[1])
         pos[2] = TrapezoidPlan(mid_z, final[2], acc[2], t_f - mid_t[1], t - mid_t[1])
     else:
-        raise Error
+        raise ValueError
     return pos
     
-
 if __name__ == '__main__':
     init = np.array([0.4, -0.12, 0.40])
     final = np.array([-0.35, 0.0, 0.40])
-    acc = np.array([0.1, 0.1, 0.1])
-    t_f = 12
+    acc = np.array([0.5, 0.5, 0.5])
+    t_f = 10
     
     # print(PathGenerate(init, final, acc, t_f, 20))
     
     ts = np.linspace(0, t_f, 200)
-    pos = np.zeros((200, 3))
+    pose = np.zeros((200, 6))
     for i in range(200):
-        pos[i] = PathGenerate(init, final, acc, t_f, ts[i])
-    #     # pos[i] = Poly3Plan(init, final, v_i, v_f, t_f, ts[i])
+        pose[i, :3] = PathGenerate(init, final, acc, t_f, ts[i])
+        pose[i, 3:] = np.array([np.pi, 0, 0])
     
-    plt.plot(ts, pos[:, 0], label = 'x')
-    plt.plot(ts, pos[:, 1], label = 'y')
-    plt.plot(ts, pos[:, 2], label = 'z')
+    # plt.plot(ts, pose[:, 0], label = 'x')
+    # plt.plot(ts, pose[:, 1], label = 'y')
+    # plt.plot(ts, pose[:, 2], label = 'z')
     # plt.plot(ts, 0.1 * np.ones_like(ts), label = '0.1')
     # plt.plot(ts, -0.1 * np.ones_like(ts), label = '-0.1')
-    plt.legend()
-    plt.show()
-            
+    # plt.legend()
+    # plt.show()
+    
+    import Kinematics
+    joints = np.zeros((200, 6))
+    fail_cnt, one_cnt, two_cnt, three_cnt, four_cnt = 0, 0, 0, 0, 0
+    for i in range(200):
+        res = Kinematics.IKSolver(pose[i])
+        if len(res) == 0:
+            fail_cnt += 1
+        elif len(res) == 1:
+            one_cnt += 1
+            joints[i] = res.reshape(-1)
+        elif len(res) == 2:
+            two_cnt += 1
+            joints[i] = res[0]
+        elif len(res) == 3:
+            three_cnt += 1
+            joints[i] = res[0]
+        elif len(res) == 4:
+            four_cnt += 1
+            joints[i] = res[0]
+        else:
+            print('fuck!')
+    print(fail_cnt, one_cnt, two_cnt, three_cnt, four_cnt)
         
     
     
