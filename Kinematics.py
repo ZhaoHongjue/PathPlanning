@@ -1,7 +1,36 @@
 from math import cos, acos, sin, atan2, sqrt, pi
 import numpy as np
-from pose import EulerXYZ2RotMat, Quat2RotMat
 
+def EulerXYZ2RotMat(Euler_XYZ: list or tuple or np.ndarray) -> np.ndarray:
+    assert len(Euler_XYZ) == 3
+    alpha, beta, gamma = Euler_XYZ
+    
+    c, s = cos, sin
+
+    R00 = c(beta) * c(gamma)
+    R01 = -c(beta) * s(gamma)
+    R02 = s(beta)
+    
+    R10 = s(alpha) * s(beta) * c(gamma) + c(alpha) * s(gamma)
+    R11 = -s(alpha) * s(beta) * s(gamma) + c(alpha) * c(gamma)
+    R12 = -s(alpha) * c(beta)
+    
+    R20 = -c(alpha) * s(beta) * c(gamma) + s(alpha) * s(gamma)
+    R21 = c(alpha) * s(beta) * s(gamma) + s(alpha) * c(gamma)
+    R22 = c(alpha) * c(beta)
+    
+    return np.array([
+        [R00,    R01,    R02],
+        [R10,    R11,    R12],
+        [R20,    R21,    R22],
+    ])
+    
+def Quat2RotMat(q) -> np.ndarray:
+    return np.array([
+        [2*(q[0]**2 + q[1]**2) - 1,     2*(q[1]*q[2] - q[0]*q[3]),      2*(q[1]*q[3] + q[0]*q[2])],
+        [2*(q[1]*q[2] + q[0]*q[3]),     2*(q[0]**2 + q[2]**2) - 1,      2*(q[2]*q[3] - q[0]*q[1])],
+        [2*(q[1]*q[3] - q[0]*q[2]),     2*(q[2]*q[3] + q[0]*q[1]),      2*(q[0]**2 + q[3]**2) - 1],
+    ])
 
 def DHs(theta):
     return np.array([
@@ -94,7 +123,3 @@ def IKSolver(pose, check = True):
                 theta.append([theta1, theta2, theta3, theta4, theta5, theta6])
     
     return np.asarray(theta)
-
-if __name__ == '__main__':
-    pose = [0.4, -0.04, 0.125, pi, 0, 0]
-    print(IKSolver(pose))

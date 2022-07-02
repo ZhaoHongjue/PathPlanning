@@ -164,7 +164,7 @@ def Quat2EulerXYZ(q: Quaternion) -> list:
     return RotMat2EulerXYZ(Quat2RotMat(q))
 
 def EulerXYZ2Quat(Euler_XYZ: list or tuple or np.ndarray) -> Quaternion:
-    return RotMat2Quat(EulerXYZ2Quat(Euler_XYZ))
+    return RotMat2Quat(EulerXYZ2RotMat(Euler_XYZ))
 
 '''----------------四元数与XYZ固定角----------------'''
 
@@ -195,14 +195,4 @@ def find_nearest_angles(q, q_list):
     delta = abs(q - q_list)
     delta = np.max(delta, axis=1)
     index = delta.argmin()
-    return q_list[index]
-
-if __name__ == '__main__':
-    a = Quaternion([1.0, 2.0, 3.0, 4.0]) 
-    b = Quaternion([2.0, 3.0, 4.0, 5.0])
-    a /= a.norm
-    b /= b.norm
-    print(RotMat2Quat(np.eye(3)))
-    
-    FixedXYZ = [0, 0, 0]
-    print(RotMat2FixedXYZ(FixedXYZ2RotMat(FixedXYZ)))
+    return q_list[index]    

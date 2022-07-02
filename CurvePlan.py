@@ -3,17 +3,14 @@ import matplotlib.pyplot as plt
 
 def TrapezoidPlan(init: float or np.ndarray, final: float or np.ndarray, 
                   acc: float or np.ndarray, t_f: float, t: float) -> float or np.ndarray:
-    # 根据init和final大小决定acc正负
-    acc = (final - init) / abs(final - init) * abs(acc)
-    tmp = acc**2 * t_f**2 - 4*acc*(final - init)
     
-    if type(tmp)!=np.ndarray:
-        assert tmp >= 0
-    else:
-        assert tmp.all() >=0
-        
     # 求对应时刻的位置
     if type(init) != np.ndarray:
+        # 求解加速度
+        acc = acc if final >= init else -acc
+        tmp = acc**2 * t_f**2 - 4*acc*(final - init)
+        assert tmp >= 0
+        
         # 求解加速减速的时间
         if acc > 0:
             t_acc = 0.5 * (t_f - np.sqrt(tmp) / acc)
@@ -38,6 +35,68 @@ def TrapezoidPlan(init: float or np.ndarray, final: float or np.ndarray,
             pos[i] = TrapezoidPlan(init[i], final[i], acc[i], t_f, t)
         return pos
     
+def TrapezoidPlanMid(points: list or np.ndarray, ts: list or np.ndarray, 
+                     acc: float or int, t: float or int):
+    assert len(points) == len(ts)
+    
+    deltas = [points[i] - points[i-1] for i in range(1, len(points))]
+    delta_ts = [ts[i] - ts[i-1] for i in range(1, len(points))]
+    
+    vels = [deltas[i] / delta_ts[i] for i in range(len(deltas))]
+    acc_0 = acc if deltas[0] > 0 else -acc
+    t_accs_0 = delta_ts[0] - np.sqrt(delta_ts[0]**2 - 2 * deltas[0] / acc_0)
+    vels[0] = deltas[0] / (delta_ts[0] - 0.5 * t_accs_0)
+    
+    acc_n = acc if deltas[-1] < 0 else -acc
+    t_accs_n = delta_ts[-1] - np.sqrt(delta_ts[-1]**2 + 2 * deltas[-1] / acc_n)
+    vels[-1] = deltas[-1] / (delta_ts[-1] - 0.5*t_accs_n)
+    
+    accs = [acc if vels[i] > vels[i-1] else -acc for i in range(len(vels))] + [acc_n]
+    t_accs = [t_accs_0] + [(vels[i] - vels[i-1]) / accs[i] for i in range(1, len(vels))] + [t_accs_n]
+    t_vels = [delta_ts[i] - 0.5 * (t_accs[i] + t_accs[i+1]) for i in range(len(t_accs)-1)]
+    
+    t_vels[0] = delta_ts[0] - t_accs[0] - 0.5 * t_accs[1]
+    t_vels[-1] = delta_ts[-1] - t_accs[-1] - 0.5 * t_accs[-2]
+    
+    mean_speed_delta = [vels[i] * t_vels[i] for i in range(len(vels))]
+    acc_delta = [0.5 * accs[0] * t_accs[0]**2] + [vels[i-1] * t_accs[i] + 0.5 * accs[i] * t_accs[i]**2 for i in range(1, len(accs))]
+    
+    # print('accs:    ', accs)
+    # print('vels:    ', vels)
+    # print('t_accs:  ', t_accs)
+    # print('t_vels:  ',t_vels)
+    # print(acc_delta)
+    
+    ts_flag, delta_flag = [0], [0]
+    for i in range(len(t_vels) + len(t_accs)):
+        if i % 2 == 0:
+            idx = i // 2
+            ts_flag.append(t_accs[idx])
+            delta_flag.append(acc_delta[idx])
+            
+        else:
+            idx = (i - 1) // 2
+            ts_flag.append(t_vels[idx])
+            delta_flag.append(mean_speed_delta[idx])
+            
+    ts_point = [sum(ts_flag[:i]) for i in range(1, len(ts_flag) + 1)]
+    delta_point = [points[0] + sum(delta_flag[:i]) for i in range(1, len(delta_flag) + 1)]
+    assert len(ts_point) == len(delta_point)
+    
+    for i in range(len(ts_point)-1):
+        if ts_point[i] <= t <= ts_point[i+1]:
+            t_delta = t - ts_point[i]
+            if i % 2 == 0:
+                idx = i // 2
+                if idx == 0:
+                    delta = 0.5 * accs[idx] * t_delta**2
+                else:
+                    delta = vels[idx-1] * t_delta + 0.5 * accs[idx] * t_delta**2
+            else:
+                idx = (i - 1) // 2
+                delta = vels[idx] * t_delta
+            return delta + delta_point[i]
+
 def Polynomial3Plan(init: float or np.ndarray, final: float or np.ndarray, 
              v_i: float or np.ndarray, v_f: float or np.ndarray,
              t_f: float, t: float) -> float or np.ndarray: 
